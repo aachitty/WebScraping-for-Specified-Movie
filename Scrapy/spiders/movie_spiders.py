@@ -1,10 +1,7 @@
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
 
-domains = ['https://0gomovies.movie/']
-import scrapy
-from scrapy.spiders import CrawlSpider, Rule
-from scrapy.linkextractors import LinkExtractor
+domains = ['https://0gomovies.movie/'] #Tried making a list to input allowed domains but it didn't work.
 
 class MovieSpider(CrawlSpider):
     name = 'movie_spider'
