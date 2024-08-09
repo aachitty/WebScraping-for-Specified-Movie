@@ -18,7 +18,7 @@ class MovieSpider(CrawlSpider):
     matched_domains = set()
     
     rules = (
-        Rule(LinkExtractor(allow=('/movie')), follow=True, callback='parse_item'),
+        Rule(LinkExtractor(allow=('/movie'), deny=('play.google', 'hulu.com', 'primevideo', 'netflix', 'youtube', 'disney', 'hotstar', 'manorama', 'hbo', 'max')), follow=True, callback='parse_item'),
     )
     
     custom_settings = {
@@ -36,7 +36,7 @@ class MovieSpider(CrawlSpider):
         
         google_api_key = 'AIzaSyCNVntztAynON4mpCBFFflBSPkmUq7_1Zo'
         cse_id = 'b187b3d32ac74425e'
-        query = 'Paradise movie watch online free'
+        query = 'Paradise movie watch online free site:.to OR site:.ru OR site:.xyz OR site:.go OR site:.me OR site:.cam OR site:.sh OR site:.llc'
         self.start_urls = self.get_urls_from_google(google_api_key, cse_id, query)
         self.allowed_domains = [urlparse(url).netloc for url in self.start_urls]
         
@@ -48,41 +48,42 @@ class MovieSpider(CrawlSpider):
         return urls
 
     def parse_item(self, response):
+        domain = urlparse(response.url).netloc
+        
+        # Skip if this domain has already matched content
+        if domain in self.matched_domains:
+            return
+        
         self.driver.get(response.url)
         html = self.driver.page_source
         response = HtmlResponse(url=self.driver.current_url, body=html, encoding='utf-8')
-
+        
         movie_title = "Paradise"  
         movie_synopsis = "An Indian tourist couple arrive in the hill country of crisis ridden Sri Lanka to celebrate their 5th wedding anniversary. But, when things take an unexpected turn, conflicts deepen revealing cracks in their relationship."
 
-        # Extract all text from the response
-        page_text = response.text.lower()
+        # Extract title and synopsis from potential tags
+        title_element = response.css('meta[property="og:title"]::attr(content)').get().lower() or ''
+        synopsis_element = response.css('meta[property="og:description"]::attr(content)').get().lower() or ''
+        
+        # Check if the movie title and synopsis match
+        title_match = movie_title.lower() in title_element
+        synopsis_match = movie_synopsis.lower() in synopsis_element
 
-        # Check if the movie title, synopsis, or "Paradise" is in the text or URL
-        title_match = movie_title.lower() in page_text
-        synopsis_match = movie_synopsis.lower() in page_text
-        url_match = 'paradise' in response.url.lower()
-
-        # Log results based on conditions
-        if title_match or synopsis_match or url_match:
-            output = f"Found match on {response.url}\n"
+        if title_match or synopsis_match:
+            output = f"Found {movie_title} in {response.url}\n"
             with open('updated_movies_found.txt', 'a') as f:
                 f.write(output)
+            
+            # Add domain to matched_domains set to prevent further requests
+            self.matched_domains.add(domain)
+            
             yield {
                 'url': response.url,
-                'title_match': title_match,
-                'synopsis_match': synopsis_match,
-                'url_match': url_match,
-                'verification': 'Title, synopsis, or URL contains "Paradise"',
+                'title': title_element,
+                'synopsis': synopsis_element,
+                'verification': 'Title or synopsis found',
             }
-        else:
-            yield {
-                'url': response.url,
-                'title_match': title_match,
-                'synopsis_match': synopsis_match,
-                'url_match': url_match,
-                'verification': 'No match found',
-            }
+
 
     def close(self, reason):
         # Close Selenium WebDriver
