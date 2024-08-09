@@ -4,16 +4,21 @@ from scrapy.http import HtmlResponse
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager  
+from urllib.parse import urlparse
+import requests
 
 class MovieSpider(CrawlSpider):
     name = 'updated_movie_spider'
     
-    allowed_domains = ['0gomovies.cam']
-    start_urls = ['https://0gomovies.cam/movie/filter/movies/latest/all/all/all/all/']
+    allowed_domains = []
+    start_urls = []
+    matched_domains = set()
     
     rules = (
-        Rule(LinkExtractor(allow=('/movie/')), follow=True, callback='parse_item'),
+        Rule(LinkExtractor(allow=('/movie')), follow=True, callback='parse_item'),
     )
     
     custom_settings = {
@@ -28,6 +33,19 @@ class MovieSpider(CrawlSpider):
         chrome_options = Options()
         chrome_options.add_argument("--headless")  # Ensure GUI is off
         self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=chrome_options)
+        
+        google_api_key = 'AIzaSyCNVntztAynON4mpCBFFflBSPkmUq7_1Zo'
+        cse_id = 'b187b3d32ac74425e'
+        query = 'Paradise movie watch online free'
+        self.start_urls = self.get_urls_from_google(google_api_key, cse_id, query)
+        self.allowed_domains = [urlparse(url).netloc for url in self.start_urls]
+        
+    def get_urls_from_google(self, api_key, cse_id, query):
+        search_url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={cse_id}&q={query}"
+        response = requests.get(search_url)
+        search_results = response.json()
+        urls = [item['link'] for item in search_results.get('items', [])]
+        return urls
 
     def parse_item(self, response):
         self.driver.get(response.url)
