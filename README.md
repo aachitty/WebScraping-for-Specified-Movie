@@ -1,0 +1,1 @@
+Base code for scraping pirated versions for a specified movie. Connected scrapy with google cse to find links. Can add your own ai model to process the links to verify weather or not the found content matches the search.
